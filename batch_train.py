@@ -5,9 +5,9 @@ import sys, psutil, time, pathlib, contextlib
 import numpy as np
 import torch
 import torch.multiprocessing as mp
-from train import train
+import train
 
-mp.set_start_method('spawn')
+#mp.set_start_method('spawn')
 
 def gpu_worker(itask, iworker, igpu, fileprefix, train_kwargs, result_queue):
 
@@ -24,10 +24,13 @@ def gpu_worker(itask, iworker, igpu, fileprefix, train_kwargs, result_queue):
 
         currproc = psutil.Process()
         createtime = currproc.create_time()
-        train_kwargs['device'] = 'cuda:{}'.format(igpu)
+        if torch.cuda.is_available():
+            train_kwargs['device'] = 'cuda:{}'.format(igpu)
+        else:
+            train_kwargs['device'] = 'cpu'
         print('Process {} task {} on worker {} on GPU {} on CPU {}'.
             format(currproc.pid, itask, iworker, igpu, currproc.cpu_num()))
-        result = train(**train_kwargs)
+        result = train.train(**train_kwargs)
         delta_seconds = time.time() - createtime
         full_result = (itask, iworker, igpu, delta_seconds, result['accuracy'],
             result['final_epoch'], train_kwargs)
@@ -49,9 +52,13 @@ def batch_training(fileprefix='', tasks=[]):
 
         print('System-wide logical CPUs:', psutil.cpu_count())
         print('System-wide physical CPUs:', psutil.cpu_count(logical=False))
-        oversubscribe = 2
-        ngpus = torch.cuda.device_count()
-        nworkers = ngpus * oversubscribe
+        if torch.cuda.is_available():
+            oversubscribe = 2
+            ngpus = torch.cuda.device_count()
+            nworkers = ngpus * oversubscribe
+        else:
+            ngpus = 0
+            nworkers = psutil.cpu_count() // 4
         curproc = psutil.Process()
         createtime = curproc.create_time()
         print('Main process {} on CPU {} with {} threads'.
@@ -82,10 +89,14 @@ def batch_training(fileprefix='', tasks=[]):
                         lock.release()
                         continue
                     train_kwargs = task_queue.get()
-                    igpu = ilock%ngpus
+                    if ngpus:
+                        igpu = ilock%ngpus
+                    else:
+                        igpu=0
                     args = (itask, ilock, igpu, fileprefix,
                             train_kwargs, result_queue)
                     p = mp.Process(target=gpu_worker, args=args)
+                    #p = mp.Process()
                     print('  Launching task {}/{} on worker {} on GPU {}'.
                         format(itask, len(tasks), ilock, igpu))
                     itask += 1
@@ -125,6 +136,11 @@ def batch_training(fileprefix='', tasks=[]):
                 format(*result[0:4], result[4].max(), np.median(result[4]), result[6]))
         delta_seconds = time.time() - createtime
         print('Main execution: {:.1f} s'.format(delta_seconds))
+
+
+def test_batch_training():
+    tasks = [{'data':1,'epochs':1,'repeat':1} for _ in range(32)]
+    batch_training(tasks=tasks)
 
 
 def prepare_tasks():
@@ -179,3 +195,7 @@ def prepare_tasks():
                                     })
                     tasks.append(task_kw)
     return tasks
+
+if __name__=='__main__':
+    mp.set_start_method('spawn')
+    test_batch_training()
