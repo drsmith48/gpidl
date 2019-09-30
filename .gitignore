@@ -6,7 +6,6 @@ tmp*
 *.pickle
 suli*
 shotlist*
-prepare_dataset*
 db.out
 *.sh
 
