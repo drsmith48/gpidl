@@ -1,0 +1,12 @@
+slurm*
+scan*
+job*
+cnn*
+tmp*
+*.pickle
+suli*
+shotlist*
+prepare_dataset*
+db.out
+*.sh
+
