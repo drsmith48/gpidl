@@ -6,8 +6,7 @@ Created on Fri Sep 13 14:35:32 2019
 @author: drsmith
 """
 
-import sys, psutil, pickle, time, random, pathlib, contextlib
-import datetime as dt
+import sys, psutil, pickle, time, pathlib, contextlib
 import numpy as np
 
 import torch
@@ -98,7 +97,7 @@ def trainnet(data=0,
     frames = obj['frames'][:,np.newaxis,...].astype(np.float)
     true_labels = obj['frameinfo']['category'].to_numpy()
     assert(frames.shape[0]==true_labels.shape[0])
-    
+
     # normalize frames
     if scaling:
         print('Frame-wise scaling to max(frame)=1')
@@ -106,7 +105,7 @@ def trainnet(data=0,
         frames = frames / frame_max.reshape(-1,1,1,1)
     else:
         print('No scaling applied to frames')
-    
+
     # frame stats
     nframes = frames.shape[0]
     print('Total frames: {}'.format(nframes))
@@ -136,7 +135,7 @@ def trainnet(data=0,
     else:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print('Using device: ', device)
-    
+
     # initiate model and send to device
     net = Net01(**model_kwargs)
     print('Model kwargs:', model_kwargs)
@@ -161,7 +160,7 @@ def trainnet(data=0,
     final_epoch = np.empty(repeat, dtype=np.int)
     print('Training runs:', repeat)
     for i in range(repeat):
-    
+
         print('Training {}/{} with {} epochs and batch size {}'.
             format(i,repeat, epochs, batch_size))
 
@@ -181,7 +180,7 @@ def trainnet(data=0,
         test_labels = torch.from_numpy(true_labels[itest]).to(device)
         validate_frames = torch.from_numpy(frames[ivalidate,...]).to(device)
         validate_labels = torch.from_numpy(true_labels[ivalidate]).to(device)
-        
+
         # reset (randomize) model parameters
         for mod in net.modules():
             if hasattr(mod, 'reset_parameters'):
@@ -217,7 +216,7 @@ def trainnet(data=0,
                 break
         final_epoch[i] = epoch+1
         print('  End training in epoch', final_epoch[i])
-        
+
         with torch.no_grad():
             validate_outputs = net(validate_frames)
             validate_loss = loss_function(validate_outputs, validate_labels)
@@ -227,18 +226,18 @@ def trainnet(data=0,
             ntotal = validate_labels.size()[0]
             accuracy[i] = ncorrect/ntotal*100
             print('  Accuracy: {}/{} ({:.2f}%)'.format(ncorrect, ntotal, accuracy[i]))
-            
+
         # end loop over repeat trainings
-        
+
     print('End training loop')
     print('Accuracies:', accuracy)
-            
+
     result = {'accuracy':accuracy,
               'final_epoch':final_epoch}
 
     return result
 
-        
+
 def gpu_worker(itask, iworker, igpu, fileprefix, train_kwargs, result_queue):
 
     if fileprefix:
@@ -259,7 +258,7 @@ def gpu_worker(itask, iworker, igpu, fileprefix, train_kwargs, result_queue):
             format(currproc.pid, itask, iworker, igpu, currproc.cpu_num()))
         result = trainnet(**train_kwargs)
         delta_seconds = time.time() - createtime
-        full_result = (itask, iworker, igpu, delta_seconds, result['accuracy'], 
+        full_result = (itask, iworker, igpu, delta_seconds, result['accuracy'],
             result['final_epoch'], train_kwargs)
         result_queue.put(full_result)
 
@@ -313,7 +312,7 @@ def batch_training(fileprefix='', tasks=[]):
                         continue
                     train_kwargs = task_queue.get()
                     igpu = ilock%ngpus
-                    args = (itask, ilock, igpu, fileprefix, 
+                    args = (itask, ilock, igpu, fileprefix,
                             train_kwargs, result_queue)
                     p = mp.Process(target=gpu_worker, args=args)
                     print('  Launching task {}/{} on worker {} on GPU {}'.
@@ -355,8 +354,8 @@ def batch_training(fileprefix='', tasks=[]):
                 format(*result[0:4], result[4].max(), np.median(result[4]), result[6]))
         delta_seconds = time.time() - createtime
         print('Main execution: {:.1f} s'.format(delta_seconds))
-        
-        
+
+
 def prepare_tasks():
     data = 1
     epochs = 16
@@ -419,4 +418,4 @@ if __name__=='__main__':
         fileprefix = sys.argv[1]
     tasks = prepare_tasks()
     batch_training(fileprefix=fileprefix, tasks=tasks)
-    
+
