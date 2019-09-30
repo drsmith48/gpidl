@@ -21,7 +21,7 @@ class Net01(nn.Module):
                  conv_layers=[6,16],
                  conv_size=[5,5],
                  fc_layers=[120,84],
-                 activation='relu',
+                 activation='leaky_relu',
                  activ_kwargs={}):
         super().__init__()
         self.activation = getattr(nn.functional, activation)
@@ -78,8 +78,8 @@ def trainnet(data=0,
              batch_size=4,
              superbatch=200,
              epochs=2,
-             optim_name='SGD',
-             optim_kwargs={'lr':1e-2},
+             optim_name='Adamax',
+             optim_kwargs={'lr':1e-3},
              loss_name='CrossEntropyLoss',
              loss_kwargs={},
              scaling=True,
