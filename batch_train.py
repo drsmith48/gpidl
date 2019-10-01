@@ -139,7 +139,8 @@ def batch_training(fileprefix='', tasks=[]):
 
 
 def test_batch_training():
-    tasks = [{'data':1,'epochs':1,'repeat':1} for _ in range(32)]
+    # 41.2 min with 8 workers on 32-core AMD Opteron 6376
+    tasks = [{'data':1,'epochs':1,'repeat':1}] * 32
     batch_training(tasks=tasks)
 
 
