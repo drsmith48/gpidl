@@ -2,7 +2,6 @@ __pycache__*
 slurm*
 scan*
 job*
-cnn*
 tmp*
 *.pickle
 suli*
@@ -11,4 +10,4 @@ db.out
 *.sh
 .idea/
 gpidata
-deepgpi/
+deepgpi
